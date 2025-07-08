@@ -1,2 +1,2 @@
-def normalize_url(self):
+def normalize_url(url):
     pass
