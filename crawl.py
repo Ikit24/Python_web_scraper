@@ -8,3 +8,6 @@ def normalize_url(url):
         return netloc
     else:
         return netloc + path
+
+def get_urls_from_html(html, base_url):
+    pass
