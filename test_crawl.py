@@ -1,5 +1,5 @@
 import unittest
-from crawl import normalize_url
+from crawl import normalize_url, get_urls_from_html
 
 
 class TestCrawl(unittest.TestCase):
