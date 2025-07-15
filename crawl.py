@@ -43,3 +43,11 @@ def get_html(url):
     except requests.exceptions.RequestException as e:
         raise Exception(f"Request failed: {str(e)}")
 
+def crawl_page(base_url, current_url=None, pages=None):
+    parsed1 = urlparse(current_url)
+    parsed2 = urlparse(base_url)
+
+    if not parsed1.netloc == parsed2.netloc:
+        return
+
+    current_url = normalize_url(current_url)
