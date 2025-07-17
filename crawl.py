@@ -59,3 +59,16 @@ def crawl_page(base_url, current_url=None, pages=None):
         return
     else:
         pages[current_url] = 1
+
+    print(f"Crawling: {current_url}")
+    HTML = get_html(current_url)
+    if HTML is None:
+        return
+    URL = get_urls_from_html(HTML)
+
+    for url in URL:
+        crawl_page(base_url, url, pages)
+
+
+
+
