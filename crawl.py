@@ -8,9 +8,9 @@ def normalize_url(url):
     netloc = parsed_url.netloc
     path = parsed_url.path.rstrip('/')
     if not path:
-        return netloc
+        return parsed_url.scheme + "://" + netloc
     else:
-        return netloc + path
+        return parsed_url.scheme + "://" + netloc + path
 
 
 def get_urls_from_html(html, base_url):
@@ -47,6 +47,8 @@ def crawl_page(base_url, current_url=None, pages=None):
     if pages is None:
         pages = {}
 
+    if current_url is None:
+        current_url = base_url
     parsed1 = urlparse(current_url)
     parsed2 = urlparse(base_url)
     if not parsed1.netloc == parsed2.netloc:
@@ -61,14 +63,15 @@ def crawl_page(base_url, current_url=None, pages=None):
         pages[current_url] = 1
 
     print(f"Crawling: {current_url}")
-    HTML = get_html(current_url)
+    try:
+        HTML = get_html(current_url)
+    except Exception:
+        return
     if HTML is None:
         return
-    URL = get_urls_from_html(HTML)
+    URL = get_urls_from_html(HTML, base_url)
 
     for url in URL:
         crawl_page(base_url, url, pages)
 
-
-
-
+    return pages
