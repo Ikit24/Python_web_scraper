@@ -1,4 +1,4 @@
-import requests
+import requests, aiohttp, asyncio
 from urllib.parse import urlparse, urljoin
 from bs4 import BeautifulSoup
 
@@ -75,3 +75,22 @@ def crawl_page(base_url, current_url=None, pages=None):
         crawl_page(base_url, url, pages)
 
     return pages
+
+class AsyncCrawler:
+    def __init__(self, base_url, base_domain, max_concurrency):
+        self.base_url = base_url
+        self.base_domain = base_domain
+        self.pages = {}
+        self.lock = asyncio.Lock()
+        self.max_concurrency = max_concurrency
+        self.semaphore = asyncio.Semaphore(max_concurrency)
+
+    async def __aenter__(self):
+        self.session = aiohttp.ClientSession()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.session.close()
+
+    async def add_page_visit(self, normalized_url):
+        pass
