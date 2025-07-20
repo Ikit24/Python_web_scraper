@@ -56,13 +56,14 @@ class AsyncCrawler:
                 return False
             else:
                 self.pages[normalized_url] = 1
+                print(f"Visited {len(self.pages)} unique pages so far.")
                 return True
 
 
     async def get_html(self, url):
         try:
             async with self.session.get(url) as response:
-                if response.status_code >= 400:
+                if response.status > 399:
                     raise Exception(f"HTTP error {response.status}: {response.reason}")
 
                 content_type = response.headers.get('content-type', '')
@@ -84,7 +85,7 @@ class AsyncCrawler:
         async with self.semaphore:
             try:
                 HTML = await self.get_html(normalized_url)
-            except Exception:
+            except Exception as e:
                 return
             if HTML is None:
                 return
@@ -95,3 +96,17 @@ class AsyncCrawler:
                 background_task = asyncio.create_task(self.crawl_page(url))
                 tasks.append(background_task)
             await asyncio.gather(*tasks)
+
+
+    async def crawl(self):
+        await self.crawl_page(self.base_url)
+        return self.pages
+
+
+async def crawl_site_async(base_url):
+    parsed_base_domain = urlparse(base_url)
+    base_domain = parsed_base_domain.netloc
+    max_concurrency = 10
+    async with AsyncCrawler(base_url, base_domain, max_concurrency) as crawler:
+        pages = await crawler.crawl()
+        return pages
