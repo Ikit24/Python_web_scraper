@@ -1,6 +1,7 @@
 import requests, aiohttp, asyncio
 from urllib.parse import urlparse, urljoin
 from bs4 import BeautifulSoup
+from threading import Thread, Lock
 
 
 def normalize_url(url):
@@ -31,13 +32,15 @@ def get_urls_from_html(html, base_url, base_domain):
 
 
 class AsyncCrawler:
-    def __init__(self, base_url, base_domain, max_concurrency):
+    def __init__(self, base_url, base_domain, max_concurrency, max_pages):
         self.base_url = base_url
         self.base_domain = base_domain
         self.pages = {}
         self.lock = asyncio.Lock()
         self.max_concurrency = max_concurrency
         self.semaphore = asyncio.Semaphore(max_concurrency)
+        self.max_pages = max_pages
+        self.pages_mutex = Lock()
 
 
     async def __aenter__(self):
@@ -53,6 +56,8 @@ class AsyncCrawler:
         async with self.lock:
             if normalized_url in self.pages:
                 self.pages[normalized_url] += 1
+                return False
+            elif len(self.pages) >= self.max_pages:
                 return False
             else:
                 self.pages[normalized_url] = 1
@@ -77,6 +82,10 @@ class AsyncCrawler:
 
 
     async def crawl_page(self, url):
+        with self.pages_mutex:
+            if self.max_pages <= len(self.pages):
+                return
+
         normalized_url = normalize_url(url)
         is_new_page = await self.add_page_visit(normalized_url)
         if not is_new_page:
@@ -103,10 +112,9 @@ class AsyncCrawler:
         return self.pages
 
 
-async def crawl_site_async(base_url):
+async def crawl_site_async(base_url, max_concurrency, max_pages):
     parsed_base_domain = urlparse(base_url)
     base_domain = parsed_base_domain.netloc
-    max_concurrency = 10
-    async with AsyncCrawler(base_url, base_domain, max_concurrency) as crawler:
+    async with AsyncCrawler(base_url, base_domain, max_concurrency, max_pages) as crawler:
         pages = await crawler.crawl()
         return pages
