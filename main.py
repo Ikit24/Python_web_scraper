@@ -1,5 +1,5 @@
 import sys, asyncio
-from crawl import crawl_site_async
+from crawl import crawl_site_async, print_report
 
 async def main():
     max_concurrency = int(sys.argv[2])
@@ -28,6 +28,7 @@ async def main():
     for url, count in pages_result.items():
         print(f"{url}: visited {count} times")
 
+    print_report(pages_result, sys.argv[1])
 
 if __name__ == "__main__":
     asyncio.run(main())

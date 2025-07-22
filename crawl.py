@@ -41,6 +41,7 @@ class AsyncCrawler:
         self.semaphore = asyncio.Semaphore(max_concurrency)
         self.max_pages = max_pages
         self.pages_mutex = Lock()
+        self.processing_urls = set()
 
 
     async def __aenter__(self):
@@ -54,10 +55,15 @@ class AsyncCrawler:
 
     async def add_page_visit(self, normalized_url):
         async with self.lock:
+            if normalized_url in self.processing_urls:
+                return False
+        
+        # Add to processing set
+            self.processing_urls.add(normalized_url)
             if normalized_url in self.pages:
                 self.pages[normalized_url] += 1
                 return False
-            elif len(self.pages) >= self.max_pages:
+            elif len(self.pages) == self.max_pages:
                 return False
             else:
                 self.pages[normalized_url] = 1
@@ -82,11 +88,8 @@ class AsyncCrawler:
 
 
     async def crawl_page(self, url):
-        with self.pages_mutex:
-            if self.max_pages <= len(self.pages):
-                return
-
         normalized_url = normalize_url(url)
+
         is_new_page = await self.add_page_visit(normalized_url)
         if not is_new_page:
             return
@@ -102,8 +105,12 @@ class AsyncCrawler:
 
             tasks = []
             for url in new_urls:
+                with self.pages_mutex:
+                    if len(self.pages) >= self.max_pages:
+                        break
                 background_task = asyncio.create_task(self.crawl_page(url))
                 tasks.append(background_task)
+
             await asyncio.gather(*tasks)
 
 
@@ -118,3 +125,18 @@ async def crawl_site_async(base_url, max_concurrency, max_pages):
     async with AsyncCrawler(base_url, base_domain, max_concurrency, max_pages) as crawler:
         pages = await crawler.crawl()
         return pages
+
+def print_report(pages, base_url):
+    print(f"""
+=============================
+  REPORT for {base_url}
+=============================
+""")
+
+    nr_of_urls = []
+    for url, count in pages.items():
+        nr_of_urls.append((url, count))
+    srtd_lst = sorted(nr_of_urls, key=lambda item: (item[1] * -1, item[0]))
+
+    for url, count in srtd_lst:
+        print(f"Found {count} internal links to {url}")
