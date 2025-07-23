@@ -55,15 +55,11 @@ class AsyncCrawler:
 
     async def add_page_visit(self, normalized_url):
         async with self.lock:
-            if normalized_url in self.processing_urls:
+            if len(self.pages) >= self.max_pages:
                 return False
-        
-        # Add to processing set
-            self.processing_urls.add(normalized_url)
+
             if normalized_url in self.pages:
                 self.pages[normalized_url] += 1
-                return False
-            elif len(self.pages) == self.max_pages:
                 return False
             else:
                 self.pages[normalized_url] = 1
@@ -73,6 +69,7 @@ class AsyncCrawler:
 
     async def get_html(self, url):
         try:
+            timeout = aiohttp.ClientTimeout(total=10)
             async with self.session.get(url) as response:
                 if response.status > 399:
                     raise Exception(f"HTTP error {response.status}: {response.reason}")
@@ -85,10 +82,16 @@ class AsyncCrawler:
 
         except aiohttp.ClientError as e:
             raise Exception(f"Request failed: {str(e)}")
+        except asyncio.TimeoutError:
+            raise Exception(f"Request timed out after 10 second")
 
 
     async def crawl_page(self, url):
         normalized_url = normalize_url(url)
+
+        async with self.lock:
+            if len(self.pages) >= self.max_pages:
+                return
 
         is_new_page = await self.add_page_visit(normalized_url)
         if not is_new_page:
@@ -105,13 +108,14 @@ class AsyncCrawler:
 
             tasks = []
             for url in new_urls:
-                with self.pages_mutex:
+                async with self.lock:
                     if len(self.pages) >= self.max_pages:
                         break
-                background_task = asyncio.create_task(self.crawl_page(url))
-                tasks.append(background_task)
+                    background_task = asyncio.create_task(self.crawl_page(url))
+                    tasks.append(background_task)
 
-            await asyncio.gather(*tasks)
+            if tasks and len(self.pages) < self.max_pages:
+                asyncio.gather(*tasks, return_exceptions=True)
 
 
     async def crawl(self):
