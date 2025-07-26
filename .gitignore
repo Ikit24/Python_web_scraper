@@ -5,3 +5,4 @@ build/
 
 # Virtual environments
 .venv
+mail_config.txt

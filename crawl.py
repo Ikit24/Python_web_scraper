@@ -131,16 +131,18 @@ async def crawl_site_async(base_url, max_concurrency, max_pages):
         return pages
 
 def print_report(pages, base_url):
-    print(f"""
+    report_text = ""
+    report_text = f"""
 =============================
   REPORT for {base_url}
 =============================
-""")
-
+"""
     nr_of_urls = []
     for url, count in pages.items():
         nr_of_urls.append((url, count))
     srtd_lst = sorted(nr_of_urls, key=lambda item: (item[1] * -1, item[0]))
 
     for url, count in srtd_lst:
-        print(f"Found {count} internal links to {url}")
+        report_text += f"Found {count} internal links to {url}\n"
+
+    return report_text

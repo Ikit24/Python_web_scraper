@@ -28,7 +28,8 @@ async def main():
     for url, count in pages_result.items():
         print(f"{url}: visited {count} times")
 
-    print_report(pages_result, sys.argv[1])
+    result = print_report(pages_result, sys.argv[1])
+    return result
 
 if __name__ == "__main__":
     asyncio.run(main())
