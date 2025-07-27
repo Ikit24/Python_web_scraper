@@ -10,7 +10,7 @@ import sys
 
 def load_email_config():
     config= {}
-    with open('mail_config.txt', 'r') as file:
+    with open('config/mail_config.txt', 'r') as file:
         for line in file:
             key, value = line.strip().split('=')
             config[key] = value
@@ -37,8 +37,9 @@ def send_email(report):
     server.send_message(msg)
     server.quit()
 
-@repeat(every().day.at("10:30"))
-#@repeat(every(30).seconds) - for testings DELETE LATER!
+#@repeat(every().day.at("10:30"))
+# For TESTINGS below:
+@repeat(every(30).seconds)
 def scheduler():
     sys.argv = ["main.py", "https://news.ycombinator.com/", "3", "25"]
     report = asyncio.run(main())
