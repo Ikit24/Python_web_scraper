@@ -1,7 +1,13 @@
 import requests, aiohttp, asyncio
+import logging
 from urllib.parse import urlparse, urljoin
 from bs4 import BeautifulSoup
 from threading import Thread, Lock
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 
 
 def normalize_url(url):
@@ -101,10 +107,17 @@ class AsyncCrawler:
             try:
                 HTML = await self.get_html(normalized_url)
             except Exception as e:
+                logging.error(f"Failed to crawl {normalized_url}: {type(e).__name__} - {e}")
                 return
+
             if HTML is None:
                 return
-            new_urls = get_urls_from_html(HTML, normalized_url, self.base_domain)
+
+            try:
+                new_urls = get_urls_from_html(HTML, normalized_url, self.base_domain)
+            except Exception as e:
+                logging.error(f"HTML retrieval successfull, {normalized_url} extraction FAILED: {type(e).__name__} - {e}")
+                return
 
             tasks = []
             for url in new_urls:
