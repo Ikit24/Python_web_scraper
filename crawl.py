@@ -24,7 +24,8 @@ def get_urls_from_html(html, base_url, base_domain):
     if not isinstance(html, str):
         raise TypeError("HTML is not a string")
 
-    urls = []
+    internal_urls = []
+    external_urls = []
     soup = BeautifulSoup(html, "html.parser")
     for tag in soup.find_all("a"):
         href = tag.get("href")
@@ -33,8 +34,11 @@ def get_urls_from_html(html, base_url, base_domain):
             parsed_url = urlparse(absolute_url)
             netloc = parsed_url.netloc
             if netloc == base_domain:
-                urls.append(absolute_url)
-    return urls
+                internal_urls.append(absolute_url)
+            elif netloc != base_domain:
+                external_urls.append(absolute_url)
+
+    return internal_urls, external_urls
 
 
 class AsyncCrawler:
@@ -42,6 +46,7 @@ class AsyncCrawler:
         self.base_url = base_url
         self.base_domain = base_domain
         self.pages = {}
+        self.external_domains = {}
         self.lock = asyncio.Lock()
         self.max_concurrency = max_concurrency
         self.semaphore = asyncio.Semaphore(max_concurrency)
@@ -71,6 +76,16 @@ class AsyncCrawler:
                 self.pages[normalized_url] = 1
                 print(f"Visited {len(self.pages)} unique pages so far.")
                 return True
+
+
+    def add_external_domain(self, external_url):
+        parsed_url = urlparse(external_url)
+        domain = parsed_url.netloc
+
+        if domain in self.external_domains:
+            self.external_domains[domain] += 1
+        else:
+            self.external_domains[domain] = 1
 
 
     async def get_html(self, url):
@@ -114,18 +129,21 @@ class AsyncCrawler:
                 return
 
             try:
-                new_urls = get_urls_from_html(HTML, normalized_url, self.base_domain)
+                new_internal_urls, new_external_urls = get_urls_from_html(HTML, normalized_url, self.base_domain)
             except Exception as e:
                 logging.error(f"HTML retrieval successfull, {normalized_url} extraction FAILED: {type(e).__name__} - {e}")
                 return
 
             tasks = []
-            for url in new_urls:
+            for url in new_internal_urls:
                 async with self.lock:
                     if len(self.pages) >= self.max_pages:
                         break
                     background_task = asyncio.create_task(self.crawl_page(url))
                     tasks.append(background_task)
+
+            for external_url in new_external_urls:
+                self.add_external_domain(external_url)
 
             if tasks and len(self.pages) < self.max_pages:
                 asyncio.gather(*tasks, return_exceptions=True)
@@ -143,7 +161,8 @@ async def crawl_site_async(base_url, max_concurrency, max_pages):
         pages = await crawler.crawl()
         return pages
 
-def print_report(pages, base_url):
+
+def print_report(pages, base_url, external_domains):
     report_text = ""
     report_text = f"""
 =============================
@@ -157,5 +176,15 @@ def print_report(pages, base_url):
 
     for url, count in srtd_lst:
         report_text += f"Found {count} internal links to {url}\n"
+
+    nr_of_external = []
+    for domain, count in external_domains.items():
+        nr_of_external.append((domain, count))
+    external_srtd_lst = sorted(nr_of_external, key=lambda item: (item[1] * -1, item[0]))
+
+    report_text += "\nExternal Domains:\n"
+
+    for domain, count in external_srtd_lst:
+        report_text += f"Referenced {domain} {count} times\n"
 
     return report_text
