@@ -1,5 +1,6 @@
 import requests, aiohttp, asyncio
 import logging
+import csv
 from urllib.parse import urlparse, urljoin
 from bs4 import BeautifulSoup
 from threading import Thread, Lock
@@ -27,12 +28,17 @@ def get_urls_from_html(html, base_url, base_domain):
     internal_urls = []
     external_urls = []
     soup = BeautifulSoup(html, "html.parser")
+
     for tag in soup.find_all("a"):
         href = tag.get("href")
         if href != None:
             absolute_url = urljoin(base_url, href)
             parsed_url = urlparse(absolute_url)
-            netloc = parsed_url.netloc
+            if parsed_url.scheme in ['http', 'https']:
+                netloc = parsed_url.netloc
+            else:
+                continue
+
             if netloc == base_domain:
                 internal_urls.append(absolute_url)
             elif netloc != base_domain:
@@ -157,9 +163,10 @@ class AsyncCrawler:
 async def crawl_site_async(base_url, max_concurrency, max_pages):
     parsed_base_domain = urlparse(base_url)
     base_domain = parsed_base_domain.netloc
+
     async with AsyncCrawler(base_url, base_domain, max_concurrency, max_pages) as crawler:
         pages = await crawler.crawl()
-        return pages
+        return pages, crawler.external_domains
 
 
 def print_report(pages, base_url, external_domains):
@@ -186,5 +193,21 @@ def print_report(pages, base_url, external_domains):
 
     for domain, count in external_srtd_lst:
         report_text += f"Referenced {domain} {count} times\n"
+
+    with open('internal_links.csv', 'w', newline='') as csv_internals:
+        internal_writer = csv.writer(csv_internals, delimiter= ',')
+        internal_writer.writerow(['URL', 'Count'])
+
+        for url, count in pages.items():
+            internal_writer.writerow([url, count])
+
+    with open('external_domains.csv', 'w', newline='') as csv_externals:
+        external_writer = csv.writer(csv_externals, delimiter= ',')
+        external_writer.writerow(['Domain', 'Count'])
+
+        for domain, count in external_domains.items():
+            external_writer.writerow([domain, count])
+
+    print("CSV files internal_links and external_domains generated locally.")
 
     return report_text

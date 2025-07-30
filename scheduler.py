@@ -47,4 +47,4 @@ def scheduler():
 
 while True:
     run_pending()
-    time.sleep(1800)
+    time.sleep(1)
