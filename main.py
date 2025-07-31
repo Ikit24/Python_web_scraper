@@ -1,5 +1,6 @@
 import sys, asyncio
 from crawl import crawl_site_async, print_report
+from visualizer import create_graph_visualization
 
 async def main():
     max_concurrency = int(sys.argv[2])
@@ -23,12 +24,15 @@ async def main():
 
     print(f"starting crawl: {sys.argv[1]}")
 
-    pages_result, external_domains = await crawl_site_async(sys.argv[1], max_concurrency, max_pages)
+    pages_result, external_domains, page_connections = await crawl_site_async(sys.argv[1], max_concurrency, max_pages)
 
     for url, count in pages_result.items():
         print(f"{url}: visited {count} times")
 
     result = print_report(pages_result, sys.argv[1], external_domains)
+
+    create_graph_visualization(page_connections)
+
     return result
 
 if __name__ == "__main__":

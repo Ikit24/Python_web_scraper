@@ -59,6 +59,7 @@ class AsyncCrawler:
         self.max_pages = max_pages
         self.pages_mutex = Lock()
         self.processing_urls = set()
+        self.page_connections = {}
 
 
     async def __aenter__(self):
@@ -140,6 +141,13 @@ class AsyncCrawler:
                 logging.error(f"HTML retrieval successfull, {normalized_url} extraction FAILED: {type(e).__name__} - {e}")
                 return
 
+            if normalized_url not in self.page_connections:
+                self.page_connections[normalized_url] = []
+
+            for target_url in new_internal_urls:
+                if target_url not in self.page_connections[normalized_url]:
+                    self.page_connections[normalized_url].append(target_url)
+
             tasks = []
             for url in new_internal_urls:
                 async with self.lock:
@@ -166,7 +174,7 @@ async def crawl_site_async(base_url, max_concurrency, max_pages):
 
     async with AsyncCrawler(base_url, base_domain, max_concurrency, max_pages) as crawler:
         pages = await crawler.crawl()
-        return pages, crawler.external_domains
+        return pages, crawler.external_domains, crawler.page_connections
 
 
 def print_report(pages, base_url, external_domains):
