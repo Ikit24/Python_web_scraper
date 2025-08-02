@@ -1,6 +1,7 @@
 import sys, asyncio
-from crawl import crawl_site_async, print_report
+from crawl import crawl_site_async
 from visualizer import create_graph_visualization
+from reporter import print_report
 
 async def main():
     max_concurrency = int(sys.argv[2])
