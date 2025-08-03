@@ -37,9 +37,7 @@ def send_email(report):
     server.send_message(msg)
     server.quit()
 
-#@repeat(every().day.at("10:30"))
-# For TESTINGS below:
-@repeat(every(30).seconds)
+@repeat(every().day.at("10:30"))
 def scheduler():
     sys.argv = ["main.py", "https://news.ycombinator.com/", "3", "25"]
     report = asyncio.run(main())
@@ -47,4 +45,4 @@ def scheduler():
 
 while True:
     run_pending()
-    time.sleep(1)
+    time.sleep(1800)
